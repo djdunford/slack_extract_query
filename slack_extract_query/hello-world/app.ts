@@ -11,6 +11,11 @@ import {Logger} from '@aws-lambda-powertools/logger';
 const region = "eu-west-2";
 const client = new S3Client({region});
 const logger = new Logger({serviceName: 'helloWorld'});
+const corsHeaders = {
+    "Access-Control-Allow-Headers": "Content-Type",
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
+}
 
 const sortMessage = (a: Message, b: Message) => {
     return Number(a.ts) - Number(b.ts)
@@ -57,6 +62,7 @@ export const lambdaHandler = async (_event: APIGatewayProxyEvent): Promise<APIGa
         return {
             statusCode: 200,
             body: JSON.stringify(filteredMessages),
+            headers: corsHeaders,
         };
     } catch (err) {
         logger.error({message: 'Error', err});
@@ -65,6 +71,7 @@ export const lambdaHandler = async (_event: APIGatewayProxyEvent): Promise<APIGa
             body: JSON.stringify({
                 message: 'some error happened',
             }),
+            headers: corsHeaders,
         };
     }
 };

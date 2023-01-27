@@ -12,6 +12,10 @@ Globals:
     Tracing: Active
   Api:
     TracingEnabled: True
+    Cors:
+      AllowMethods: "'GET,POST,OPTIONS'"
+      AllowHeaders: "'content-type'"
+      AllowOrigin: "'*'"
 
 Resources:
   HelloWorldFunction:

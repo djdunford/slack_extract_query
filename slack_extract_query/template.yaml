@@ -28,6 +28,9 @@ Resources:
           Properties:
             Path: /hello
             Method: get
+      Environment:
+        Variables:
+          BUCKET: !Ref SourceBucket
     Metadata: # Manage esbuild properties
       BuildMethod: esbuild
       BuildProperties:

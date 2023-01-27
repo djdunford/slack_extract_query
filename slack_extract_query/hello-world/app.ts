@@ -14,7 +14,7 @@ const sortMessage = (a: Message, b: Message) => {
     return Number(a.ts) - Number(b.ts)
 }
 
-export const lambdaHandler = async (event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> => {
+export const lambdaHandler = async (_event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> => {
     try {
         const command = new ListObjectsV2Command({
             Bucket: process.env['BUCKET'],

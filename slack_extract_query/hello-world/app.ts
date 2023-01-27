@@ -6,9 +6,11 @@ import {
     GetObjectCommand,
 } from "@aws-sdk/client-s3";
 import {Message} from "./models/Message";
+import {Logger} from '@aws-lambda-powertools/logger';
 
 const region = "eu-west-2";
 const client = new S3Client({region});
+const logger = new Logger({serviceName: 'helloWorld'});
 
 const sortMessage = (a: Message, b: Message) => {
     return Number(a.ts) - Number(b.ts)
@@ -19,7 +21,9 @@ export const lambdaHandler = async (_event: APIGatewayProxyEvent): Promise<APIGa
         const command = new ListObjectsV2Command({
             Bucket: process.env['BUCKET'],
         });
+        logger.info({message: 'ListObjectsV2CommandInput', command});
         const response: ListObjectsV2CommandOutput = await client.send(command);
+        logger.info({message: 'ListObjectsV2CommandOutput', response});
 
         const messages: Message[] = [];
 
@@ -34,6 +38,7 @@ export const lambdaHandler = async (_event: APIGatewayProxyEvent): Promise<APIGa
                     const messageList: Message[] = JSON.parse(message);
                     for (const messageItem of messageList) {
                         messages.push(messageItem);
+                        logger.info({message: 'addItem', messageItem});
                     }
                 }
             }
@@ -54,7 +59,7 @@ export const lambdaHandler = async (_event: APIGatewayProxyEvent): Promise<APIGa
             body: JSON.stringify(filteredMessages),
         };
     } catch (err) {
-        console.log(err);
+        logger.error({message: 'Error', err});
         return {
             statusCode: 500,
             body: JSON.stringify({

@@ -10,14 +10,48 @@ Globals:
   Function:
     Timeout: 60
     Tracing: Active
-  Api:
-    TracingEnabled: True
-    Cors:
-      AllowMethods: "'GET,POST,OPTIONS'"
-      AllowHeaders: "'content-type'"
-      AllowOrigin: "'*'"
+    MemorySize: 256
+    Architectures: x86_64
 
 Resources:
+  SlackQueryApi:
+    Type: AWS::Serverless::Api
+    DependsOn: Account
+    Properties:
+      MethodSettings:
+        - LoggingLevel: INFO
+          ResourcePath: "/*"
+          HttpMethod: "*"
+          DataTraceEnabled: true
+          MetricsEnabled: true
+          ThrottlingRateLimit: 100
+          ThrottlingBurstLimit: 200
+      AccessLogSetting:
+        DestinationArn: !Sub "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:${ApiAccessLogGroup}"
+        Format: '{ "requestId":"$context.requestId", "ip": "$context.identity.sourceIp", "caller":"$context.identity.caller", "user":"$context.identity.user","requestTime":"$context.requestTime", "httpMethod":"$context.httpMethod","resourcePath":"$context.resourcePath", "status":"$context.status","protocol":"$context.protocol", "responseLength":"$context.responseLength" }'
+      TracingEnabled: true
+      Cors:
+        AllowMethods: "'GET,POST,OPTIONS'"
+        AllowHeaders: "'content-type'"
+        AllowOrigin: "'*'"
+      Name: !Sub "SlackQueryApi-${AWS::StackName}"
+      StageName: prod
+      OpenApiVersion: 3.0.1
+      EndpointConfiguration:
+        Type: REGIONAL
+
+  ApiAccessLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /aws/apigateway/AccessLog-SlackQueryApi-${AWS::StackName}
+      RetentionInDays: 7
+
+  ApiExecutionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "API-Gateway-Execution-Logs_${SlackQueryApi}/prod"
+      RetentionInDays: 7
+
   HelloWorldFunction:
     Type: AWS::Serverless::Function # More info about Function Resource: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
     Properties:
@@ -32,6 +66,7 @@ Resources:
           Properties:
             Path: /hello
             Method: get
+            RestApiId: !Ref SlackQueryApi
       Environment:
         Variables:
           BUCKET: !Ref SourceBucket
@@ -46,6 +81,7 @@ Resources:
         Sourcemap: true
         EntryPoints: 
         - app.ts
+
   SourceBucket:
     Type: AWS::S3::Bucket
     Properties:
@@ -64,13 +100,33 @@ Resources:
         IgnorePublicAcls: true
         RestrictPublicBuckets: true
 
+  CloudWatchRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - apigateway.amazonaws.com
+            Action: 'sts:AssumeRole'
+      Path: /
+      ManagedPolicyArns:
+        - >-
+          arn:aws:iam::aws:policy/service-role/AmazonAPIGatewayPushToCloudWatchLogs
+
+  Account:
+    Type: 'AWS::ApiGateway::Account'
+    Properties:
+      CloudWatchRoleArn: !GetAtt
+        - CloudWatchRole
+        - Arn
+
 Outputs:
-  # ServerlessRestApi is an implicit API created out of Events key under Serverless::Function
-  # Find out more about other implicit resources you can reference within SAM
-  # https://github.com/awslabs/serverless-application-model/blob/master/docs/internals/generated_resources.rst#api
   HelloWorldApi:
     Description: "API Gateway endpoint URL for Prod stage for Hello World function"
-    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/hello/"
+    Value: !Sub "https://${SlackQueryApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/hello/"
   HelloWorldFunction:
     Description: "Hello World Lambda Function ARN"
     Value: !GetAtt HelloWorldFunction.Arn

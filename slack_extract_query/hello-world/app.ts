@@ -21,8 +21,13 @@ const sortMessage = (a: Message, b: Message) => {
     return Number(a.ts) - Number(b.ts)
 }
 
-export const lambdaHandler = async (_event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> => {
+const filteredMessages: unknown[] = []
+
+const initialise = async () => {
     try {
+        logger.info({message: 'Initialising'});
+        filteredMessages.length = 0
+
         const command = new ListObjectsV2Command({
             Bucket: process.env['BUCKET'],
         });
@@ -51,19 +56,43 @@ export const lambdaHandler = async (_event: APIGatewayProxyEvent): Promise<APIGa
 
         messages.sort(sortMessage);
 
-        const filteredMessages: unknown[] = []
         messages.map((message) => {
             filteredMessages.push({
-                ts: (new Date(Number(message.ts)*1000)).toISOString(),
+                ts: (new Date(Number(message.ts) * 1000)).toISOString(),
                 text: message.text,
             })
         })
 
-        return {
-            statusCode: 200,
-            body: JSON.stringify(filteredMessages),
-            headers: corsHeaders,
-        };
+        logger.info({message: 'Initialisation complete'});
+
+    } catch (err) {
+        logger.error({message: 'Init Error', err});
+    }
+}
+
+const initialisePromise = initialise();
+
+export const lambdaHandler = async (_event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> => {
+
+    await initialisePromise;
+
+    try {
+        if (filteredMessages.length !== 0) {
+            return {
+                statusCode: 200,
+                body: JSON.stringify(filteredMessages),
+                headers: corsHeaders,
+            };
+        } else {
+            logger.error({message: 'List Empty'});
+            return {
+                statusCode: 404,
+                body: JSON.stringify({
+                    message: 'List Empty',
+                }),
+                headers: corsHeaders,
+            };
+        }
     } catch (err) {
         logger.error({message: 'Error', err});
         return {

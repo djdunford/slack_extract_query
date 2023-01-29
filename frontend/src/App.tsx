@@ -1,28 +1,27 @@
 import React from 'react';
 import './App.css';
-import axios from "axios";
 import {SlackItem} from "./models/SlackItem";
 import Table from 'react-bootstrap/Table';
+import { API } from 'aws-amplify';
+import { withAuthenticator } from "@aws-amplify/ui-react";
+import '@aws-amplify/ui-react/styles.css';
 
 interface Params {
-  baseUrl: string;
-  headers: any;
-  method: string;
+  baseUrl?: string;
+  headers?: any;
+  method?: string;
+  response?: boolean;
 }
 
 const getConfig: Params = {
-  baseUrl: "https://reowwnul6h.execute-api.eu-west-2.amazonaws.com/Prod/",
   headers: {
-    Authorization: undefined
   },
-  method: "get",
+  response: true,
 }
 
 export const getApi = async (url: string): Promise<any> => {
-  return await axios({
-    ...getConfig,
-    url: `${getConfig.baseUrl}/${url}`,
-  }).then((response)=> {
+  return API.get("slackquery", url, getConfig)
+  .then((response)=> {
     console.log(response)
     return {
       status: response.status,
@@ -37,7 +36,7 @@ export const getApi = async (url: string): Promise<any> => {
   })
 }
 
-function App() {
+function App({ signOut, user}: any) {  // TODO: remove use of any
 
   const [data, setData] = React.useState([])
   const getData = () => getApi("hello").then((res) => {
@@ -55,6 +54,10 @@ function App() {
 
   return (
     <div className="App">
+      <>
+        <h1>Hello {user.username}</h1>
+        <button onClick={signOut}>Sign out</button>
+      </>
       <Table striped bordered hover size="sm">
         <thead>
           <tr>
@@ -77,4 +80,4 @@ function App() {
   );
 }
 
-export default App;
+export default withAuthenticator(App);

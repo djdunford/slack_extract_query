@@ -12,7 +12,7 @@ const region = "eu-west-2";
 const client = new S3Client({region});
 const logger = new Logger({serviceName: 'helloWorld'});
 const corsHeaders = {
-    "Access-Control-Allow-Headers": "Content-Type",
+    "Access-Control-Allow-Headers": "*",
     "Access-Control-Allow-Origin": "*",
     "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
 }

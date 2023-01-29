@@ -32,7 +32,7 @@ Resources:
       TracingEnabled: true
       Cors:
         AllowMethods: "'GET,POST,OPTIONS'"
-        AllowHeaders: "'content-type'"
+        AllowHeaders: "'*'"
         AllowOrigin: "'*'"
       Name: !Sub "SlackQueryApi-${AWS::StackName}"
       StageName: prod

@@ -103,6 +103,7 @@ Resources:
   CloudWatchRole:
     Type: 'AWS::IAM::Role'
     Properties:
+      RoleName: !Sub "${AWS::StackName}-apigw-cloudwatch-write"
       AssumeRolePolicyDocument:
         Version: 2012-10-17
         Statement:
@@ -148,6 +149,15 @@ Resources:
       UsernameConfiguration:
         CaseSensitive: false
       UserPoolName: !Sub "${AWS::StackName}-userpool"
+      Schema:
+        - Name: name
+          AttributeDataType: String
+          Mutable: true
+          Required: false
+        - Name: email
+          AttributeDataType: String
+          Mutable: false
+          Required: false
 
   UserPoolClient:
     Type: 'AWS::Cognito::UserPoolClient'

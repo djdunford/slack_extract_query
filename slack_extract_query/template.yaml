@@ -39,6 +39,21 @@ Resources:
       OpenApiVersion: 3.0.1
       EndpointConfiguration:
         Type: REGIONAL
+      Auth:
+        AddDefaultAuthorizerToCorsPreflight: false
+        ApiKeyRequired: false
+        Authorizers:
+          CognitoAuth:
+            UserPoolArn: !GetAtt UserPool.Arn
+            AuthType: "COGNITO_USER_POOLS"
+        DefaultAuthorizer: CognitoAuth
+        ResourcePolicy:
+          CustomStatements: [{
+                               "Effect": "Allow",
+                               "Principal": "*",
+                               "Action": "execute-api:Invoke",
+                               "Resource": "execute-api:/*"
+          }]
 
   ApiAccessLogGroup:
     Type: AWS::Logs::LogGroup

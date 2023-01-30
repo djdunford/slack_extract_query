@@ -116,7 +116,7 @@ Resources:
         RestrictPublicBuckets: true
 
   CloudWatchRole:
-    Type: 'AWS::IAM::Role'
+    Type: AWS::IAM::Role
     Properties:
       RoleName: !Sub "${AWS::StackName}-apigw-cloudwatch-write"
       AssumeRolePolicyDocument:
@@ -133,14 +133,14 @@ Resources:
           arn:aws:iam::aws:policy/service-role/AmazonAPIGatewayPushToCloudWatchLogs
 
   Account:
-    Type: 'AWS::ApiGateway::Account'
+    Type: AWS::ApiGateway::Account
     Properties:
       CloudWatchRoleArn: !GetAtt
         - CloudWatchRole
         - Arn
 
   UserPool:
-    Type: 'AWS::Cognito::UserPool'
+    Type: AWS::Cognito::UserPool
     Properties:
       AdminCreateUserConfig:
         AllowAdminCreateUserOnly: true
@@ -175,7 +175,7 @@ Resources:
           Required: false
 
   UserPoolClient:
-    Type: 'AWS::Cognito::UserPoolClient'
+    Type: AWS::Cognito::UserPoolClient
     Properties:
       AccessTokenValidity: 12
       TokenValidityUnits:
@@ -206,6 +206,106 @@ Resources:
       CallbackURLs:
         - https://www.google.com/
 
+  FrontEndDeployBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub "${AWS::StackName}-${AWS::AccountId}-frontenddeploy"
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - BucketKeyEnabled: true
+            ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      OwnershipControls:
+        Rules:
+          - ObjectOwnership: BucketOwnerEnforced
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+
+  FrontEndDeployOriginAccessControl:
+    Type: AWS::CloudFront::OriginAccessControl
+    Properties:
+      OriginAccessControlConfig:
+        Description: !Sub "${AWS::StackName} Frontend Deploy Origin Access Config"
+        Name: !Sub "${AWS::StackName} Frontend Deploy Origin Access Config"
+        OriginAccessControlOriginType: s3
+        SigningBehavior: always
+        SigningProtocol: sigv4
+
+  FrontEndDeployBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      PolicyDocument:
+        Id: OACPolicy
+        Version: 2012-10-17
+        Statement:
+          - Sid: AllowCloudFrontServicePrincipalReadOnly
+            Effect: Allow
+            Principal:
+              Service: cloudfront.amazonaws.com
+            Action:
+              - s3:GetObject
+            Resource: !Join
+              - ''
+              - - 'arn:aws:s3:::'
+                - !Ref FrontEndDeployBucket
+                - /*
+            Condition:
+              StringEquals:
+                "AWS:SourceArn": !Sub "arn:aws:cloudfront::${AWS::AccountId}:distribution/${FrontEndDistribution}"
+      Bucket: !Ref FrontEndDeployBucket
+
+  FrontEndDistribution:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Comment: !Sub "${AWS::StackName} Front-end deploy distribution"
+        Origins:
+          - DomainName: !GetAtt FrontEndDeployBucket.DomainName
+            Id: DeployBucket
+            S3OriginConfig:
+              OriginAccessIdentity: ""
+            OriginAccessControlId: !Ref FrontEndDeployOriginAccessControl
+        Enabled: true
+        DefaultRootObject: index.html
+        DefaultCacheBehavior:
+          AllowedMethods:
+            - GET
+            - HEAD
+            - OPTIONS
+          Compress: true
+          CachedMethods:
+            - GET
+            - HEAD
+            - OPTIONS
+          CachePolicyId: !Ref FrontEndDistributionCachePolicy
+          TargetOriginId: DeployBucket
+          ViewerProtocolPolicy: allow-all
+        PriceClass: PriceClass_100
+        ViewerCertificate:
+          CloudFrontDefaultCertificate: 'true'
+
+  FrontEndDistributionCachePolicy:
+    Type: AWS::CloudFront::CachePolicy
+    Properties:
+      CachePolicyConfig:
+        Comment: "cached for 5 mins"
+        DefaultTTL: 300
+        MaxTTL: 300
+        MinTTL: 300
+        Name: !Sub "${AWS::StackName}-cloudfront-cache-policy"
+        ParametersInCacheKeyAndForwardedToOrigin:
+          CookiesConfig:
+            CookieBehavior: none
+          EnableAcceptEncodingGzip: true
+          EnableAcceptEncodingBrotli: true
+          HeadersConfig:
+            HeaderBehavior: none
+          QueryStringsConfig:
+            QueryStringBehavior: none
+
 Outputs:
   HelloWorldApi:
     Description: "API Gateway endpoint URL for Prod stage for Hello World function"
@@ -216,3 +316,6 @@ Outputs:
   HelloWorldFunctionIamRole:
     Description: "Implicit IAM Role created for Hello World function"
     Value: !GetAtt HelloWorldFunctionRole.Arn
+  CloudFrontDistributionUrl:
+    Description: "CloudFront Distribution URL"
+    Value: !GetAtt FrontEndDistribution.DomainName

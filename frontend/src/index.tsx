@@ -8,7 +8,6 @@ import { Amplify, Auth } from "aws-amplify";
 
 Amplify.configure({
   Auth: {
-    identityPoolId: 'eu-west-2:372e73d7-1bf7-4b12-adb9-2484d12ecfe1',
     region: 'eu-west-2',
     userPoolId: 'eu-west-2_6IR8hhJv5',
     userPoolWebClientId: '41ujni164r350cv4t4i1e1erf7',

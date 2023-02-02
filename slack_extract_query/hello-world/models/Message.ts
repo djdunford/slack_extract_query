@@ -9,4 +9,6 @@ export type Message = {
   username: string;
   bot_id: string | null;
   ts: string;
+
+  comment: any;
 }

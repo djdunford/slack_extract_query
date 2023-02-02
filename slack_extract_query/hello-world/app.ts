@@ -60,6 +60,8 @@ const initialise = async () => {
             filteredMessages.push({
                 ts: (new Date(Number(message.ts) * 1000)).toISOString(),
                 text: message.text,
+                subtype: message.subtype,
+                comment: message.comment,
             })
         })
 

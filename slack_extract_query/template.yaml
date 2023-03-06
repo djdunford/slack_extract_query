@@ -13,6 +13,19 @@ Globals:
     MemorySize: 256
     Architectures: x86_64
 
+Parameters:
+  Environment:
+    Description: "The environment type"
+    Type: "String"
+    Default: dev
+    AllowedValues:
+      - "dev"
+      - "build"
+      - "staging"
+      - "integration"
+      - "production"
+    ConstraintDescription: must be dev, build, staging, integration or production
+
 Resources:
   SlackQueryApi:
     Type: AWS::Serverless::Api
@@ -44,7 +57,8 @@ Resources:
         ApiKeyRequired: false
         Authorizers:
           CognitoAuth:
-            UserPoolArn: !GetAtt UserPool.Arn
+            UserPoolArn:
+              Fn::ImportValue: !Sub "UserPoolArn-${Environment}"
             AuthType: "COGNITO_USER_POOLS"
         DefaultAuthorizer: CognitoAuth
         ResourcePolicy:
@@ -138,73 +152,6 @@ Resources:
       CloudWatchRoleArn: !GetAtt
         - CloudWatchRole
         - Arn
-
-  UserPool:
-    Type: AWS::Cognito::UserPool
-    Properties:
-      AdminCreateUserConfig:
-        AllowAdminCreateUserOnly: true
-      AutoVerifiedAttributes:
-        - email
-      EmailConfiguration:
-        EmailSendingAccount: COGNITO_DEFAULT
-      EnabledMfas:
-        - SOFTWARE_TOKEN_MFA
-      MfaConfiguration: OPTIONAL
-      Policies:
-        PasswordPolicy:
-          MinimumLength: 8
-          RequireLowercase: true
-          RequireNumbers: true
-          RequireSymbols: false
-          RequireUppercase: true
-          TemporaryPasswordValidityDays: 7
-      UsernameAttributes:
-        - email
-      UsernameConfiguration:
-        CaseSensitive: false
-      UserPoolName: !Sub "${AWS::StackName}-userpool"
-      Schema:
-        - Name: name
-          AttributeDataType: String
-          Mutable: true
-          Required: false
-        - Name: email
-          AttributeDataType: String
-          Mutable: false
-          Required: false
-
-  UserPoolClient:
-    Type: AWS::Cognito::UserPoolClient
-    Properties:
-      AccessTokenValidity: 12
-      TokenValidityUnits:
-        AccessToken: hours
-        IdToken: hours
-        RefreshToken: hours
-      AllowedOAuthFlows:
-        - code
-        - implicit
-      AllowedOAuthFlowsUserPoolClient: true
-      AllowedOAuthScopes:
-        - email
-        - openid
-      AuthSessionValidity: 5
-      ClientName: !Sub "${AWS::StackName}-userpoolclient"
-      EnableTokenRevocation: true
-      ExplicitAuthFlows:
-        - ALLOW_USER_PASSWORD_AUTH
-        - ALLOW_USER_SRP_AUTH
-        - ALLOW_REFRESH_TOKEN_AUTH
-      GenerateSecret: false
-      IdTokenValidity: 12
-      PreventUserExistenceErrors: ENABLED
-      RefreshTokenValidity: 12
-      SupportedIdentityProviders:
-        - COGNITO
-      UserPoolId: !Ref UserPool
-      CallbackURLs:
-        - https://www.google.com/
 
   FrontEndDeployBucket:
     Type: AWS::S3::Bucket
@@ -305,6 +252,39 @@ Resources:
             HeaderBehavior: none
           QueryStringsConfig:
             QueryStringBehavior: none
+
+  UserPoolClient:
+    Type: AWS::Cognito::UserPoolClient
+    Properties:
+      AccessTokenValidity: 12
+      TokenValidityUnits:
+        AccessToken: hours
+        IdToken: hours
+        RefreshToken: hours
+      AllowedOAuthFlows:
+        - code
+        - implicit
+      AllowedOAuthFlowsUserPoolClient: true
+      AllowedOAuthScopes:
+        - email
+        - openid
+      AuthSessionValidity: 5
+      ClientName: !Sub "${AWS::StackName}-userpoolclient"
+      EnableTokenRevocation: true
+      ExplicitAuthFlows:
+        - ALLOW_USER_PASSWORD_AUTH
+        - ALLOW_USER_SRP_AUTH
+        - ALLOW_REFRESH_TOKEN_AUTH
+      GenerateSecret: false
+      IdTokenValidity: 12
+      PreventUserExistenceErrors: ENABLED
+      RefreshTokenValidity: 12
+      SupportedIdentityProviders:
+        - COGNITO
+      UserPoolId:
+        Fn::ImportValue: !Sub "UserPool-${Environment}"
+      CallbackURLs:
+        - https://www.google.com/
 
 Outputs:
   HelloWorldApi:
